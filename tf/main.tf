@@ -37,6 +37,14 @@ resource "azurerm_container_app_environment" "simple_server_container_app_env" {
   log_analytics_workspace_id = azurerm_log_analytics_workspace.simple_server_app_log.id
 }
 
+variable "docker_secrets" {
+  type = object({
+    name = string
+    user = string
+    pass = string
+  })
+}
+
 resource "azurerm_container_app" "simple_server_app_dockerhub" {
   name                         = "simple-server-app-dh-ne-001"
   container_app_environment_id = azurerm_container_app_environment.simple_server_container_app_env.id
@@ -44,7 +52,9 @@ resource "azurerm_container_app" "simple_server_app_dockerhub" {
   revision_mode                = "Single"
 
   registry {
-    server = "docker.io"
+    server               = "docker.io"
+    username             = var.docker_secrets.user
+    password_secret_name = var.docker_secrets.name
   }
 
   ingress {
@@ -60,7 +70,7 @@ resource "azurerm_container_app" "simple_server_app_dockerhub" {
 
   template {
     container {
-      name   = "simple-serv-app"
+      name   = "simple-serv-app-dh-container"
       image  = "asutptec4/shop-simple-serv-app:latest"
       cpu    = 0.25
       memory = "0.5Gi"
@@ -71,10 +81,15 @@ resource "azurerm_container_app" "simple_server_app_dockerhub" {
       }
     }
   }
+
+  secret {
+    name  = var.docker_secrets.name
+    value = var.docker_secrets.pass
+  }
 }
 
 resource "azurerm_container_registry" "simple_server_app_container_regestry" {
-  name                = "registry-simple-server-app-acr-ne-001"
+  name                = "simpleserverappacrne001"
   resource_group_name = azurerm_resource_group.simple_server_app.name
   location            = azurerm_resource_group.simple_server_app.location
   sku                 = "Basic"
@@ -107,7 +122,7 @@ resource "azurerm_container_app" "simple_server_app_azure_registry" {
 
   template {
     container {
-      name   = "simple-serv-app"
+      name   = "simple-serv-app-acr-container"
       image  = "${azurerm_container_registry.simple_server_app_container_regestry.login_server}/shop-simple-serv-app:latest"
       cpu    = 0.25
       memory = "0.5Gi"
